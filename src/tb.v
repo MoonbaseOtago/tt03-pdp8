@@ -64,7 +64,7 @@ module tb (
     assign data_write = outputs[7] ? 1 : outputs[4]; // negative data strobe
 
     // instantiate the DUT
-    moonbase_cpu_pdp8 #(.MAX_COUNT(100)) cpu(
+    moonbase_pdp8 #(.MAX_COUNT(100)) cpu(
 `ifdef GL_TEST
         .vccd1( 1'b1),
         .vssd1( 1'b0),

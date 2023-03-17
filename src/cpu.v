@@ -6,7 +6,7 @@
 
 `default_nettype none
 
-module moonbase_cpu_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0] io_out);
+module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0] io_out);
    
 	//
 	//	External interface
