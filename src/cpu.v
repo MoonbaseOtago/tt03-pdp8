@@ -1,6 +1,6 @@
 
 //
-//	(C) Copyright Paul Campbell 2022 taniwha@gmail.com
+//	(C) Copyright Paul Campbell 2023 taniwha@gmail.com
 //	Released under an Apache License 2.0
 //
 
@@ -45,7 +45,7 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 	wire ext_skip		= io_in[3];
     wire [3:0]ext_in	= io_in[7:4];
     
-    reg       strobe_out;	// address strobe		- designed to be wired to a 7 bit latch and a MWS5101AEL3
+    wire      strobe_out=~r_phase[2];// address strobe		- designed to be wired to a 7 bit latch and a MWS5101AEL3
 	reg		  nibble;	    // address/data nibble
     reg       write;		// write enable for ram/io
 	reg		  addr_pc;
@@ -63,8 +63,8 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 	2'b10: data_out = r_data[11:8];
 	2'b11: data_out = ext_io;
 	endcase
-    wire [5:0]addr_out_mux = (bus_index[0]?addr[11:6]:addr[5:0]);			// mux-d by portion
-    assign    io_out   = {strobe_out, bus_index[0], strobe_out? addr_out_mux : {bus_index[1], write, data_out}};
+    wire [5:0]addr_out_mux = (bus_index[1]?addr[11:6]:addr[5:0]);			// mux-d by portion
+    assign    io_out   = {strobe_out, bus_index[1], strobe_out ? addr_out_mux : {bus_index[0], write, data_out}};
 
     reg  [11:0]r_pc, c_pc;	// program counter	// actual flops in the system 
     reg  [11:0]r_a,  c_a;	// accumulator
@@ -78,8 +78,8 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
     //
     //	phase:
 	//	    st	name		next
-    //		0 - addrH		1
-    //		1 - addrL		7/4
+    //		0 - addrH		2
+    //		2 - addrL		7/4
 	//		7 - IO			4
     //		4 - dataH		5
     //		5 - dataM		6
@@ -178,12 +178,12 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
     	end else 
     	case (r_phase) // synthesis full_case parallel_case
     	0:	begin					// 0: address latch address hi
-				c_phase = 1;
+				c_phase = 2;
 				if (write) 
 					c_data = wdata;
 			end
-    	1:	begin					// 1: address latch address lo
-				c_phase = (next_io?7:2);
+    	2:	begin					// 1: address latch address lo
+				c_phase = (next_io?7:4);
 			end
     	7:	begin					// 1: address latch address lo
 				c_io_ready = ext_in[0];
@@ -202,7 +202,8 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 		6:	begin						// 4 address latch for next operand  
 				if (!write) 
 					c_data[3:0] = ext_in;
-				c_ins = {r_data[11:4], ext_in};
+				if (r_super == 0)
+					c_ins = {r_data[11:4], ext_in};
 				c_phase = 0;
 			end
 		endcase
@@ -212,7 +213,6 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 	always @(*) begin
 		c_pc    = r_pc;
 		c_super = r_super;
-		c_ins   = r_ins;
 		c_l = r_l;
 		c_a = r_a;
 		c_data_addr = r_data_addr;
@@ -225,12 +225,15 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 		if (reset) begin
 			c_super = 0;
 			c_pc = 0;
+			c_l = 0;
 		end else
 		case (r_super) // synthesis full_case parallel_case
 		0:	begin
 				addr = r_pc;
-				if (r_phase == 6)
+				if (r_phase == 6) begin
+					c_super = 1;
 					c_pc = r_pc+1;
+				end
 			end
 		1:  begin							// data fetch
 				if (r_phase == 0) begin
@@ -336,7 +339,7 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 							addr = r_pc;
 							c_super = 0;
 						end						
-					1:	begin	// tad
+					1:	begin :pp	// tad
 							{c_l, c_a} = {r_l,r_a}+{1'b0,r_data};
 							addr = r_pc;
 							c_super = 0;
@@ -416,7 +419,7 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 		r_super <= c_super;
 		r_data  <= c_data;
 		r_data_addr <= c_data_addr;
-		r_io_ready = c_io_ready;
+		r_io_ready <= c_io_ready;
     end
 
 endmodule

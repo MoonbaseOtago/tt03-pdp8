@@ -26,6 +26,8 @@ module tb (
         $dumpvars (0, tb);
 `endif
         #1;
+
+#500000;$finish;
     end
 
     // wire up the inputs and outputs
@@ -36,7 +38,7 @@ module tb (
     wire skip = 0;
 
     reg [3:0]din;
-    wire [7:0] inputs = {data_in, din, rst, clk};	
+    wire [7:0] inputs = {din, 2'b0, rst, clk};	
     reg io;
     reg [4:0]io_sel;
     always @(*)
@@ -61,7 +63,7 @@ module tb (
 	
     wire [7:0] outputs;
     assign data_out = outputs[3:0];
-    assign data_write = outputs[7] ? 1 : outputs[4]; // negative data strobe
+    assign data_write =1;
 
     // instantiate the DUT
     moonbase_pdp8 #(.MAX_COUNT(100)) cpu(
