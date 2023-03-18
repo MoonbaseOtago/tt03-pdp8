@@ -11,8 +11,7 @@ module tb (
     input clk,
     input rst,
     output data_write,
-    output data_choose,
-    output [3:0] data_out
+    output [11:0] data_out
    );
 
     
@@ -27,13 +26,13 @@ module tb (
 `endif
         #1;
 
-#500000;$finish;
+#1000000;$finish;
     end
 
     // wire up the inputs and outputs
     reg  [1:0]data_in;
     wire [11:0]sram_out;
-    wire [11:0]io_out;
+    wire [11:0]io_out=0;
     wire interrupt = 0;
     wire skip = 0;
 
@@ -62,8 +61,8 @@ module tb (
     end
 	
     wire [7:0] outputs;
-    assign data_out = outputs[3:0];
-    assign data_write =1;
+    assign data_out = {outputs[3:0], tmp};
+    assign data_write = !(outputs[7:5] == 3'b010 && io && latch[5:0]==2);
 
     // instantiate the DUT
     moonbase_pdp8 #(.MAX_COUNT(100)) cpu(
@@ -89,13 +88,13 @@ module tb (
     reg [7:0]tmp;
     assign sram_out = sram[latch];
     always @(posedge clk) 
-    if (outputs[5] && !outputs[7]) begin
+    if (outputs[4] && !outputs[7]) begin
 	case (outputs[6:5]) 
-	2'b00: tmp[7:4] <= outputs[3:0];
-	2'b01: tmp[3:0] <= outputs[3:0];
+	2'b00: tmp[3:0] <= outputs[3:0];
+	2'b01: tmp[7:4] <= outputs[3:0];
 	2'b10: if (io) begin
 	       end else begin
-	            sram[latch] <= {tmp, outputs[3:0]};
+	            sram[latch] <= {outputs[3:0], tmp};
 	       end
 	endcase
     end

@@ -54,14 +54,13 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 	wire      addr_cycle = cycle==0;
 	wire      data_cycle = cycle==1;
 	reg [11:0]addr;
-	reg  [3:0]ext_io;
 	reg   [3:0]data_out;
 	always @(*)
 	case (bus_index)
 	2'b00: data_out = r_data[3:0];
 	2'b01: data_out = r_data[7:4];
 	2'b10: data_out = r_data[11:8];
-	2'b11: data_out = ext_io;
+	2'b11: data_out = {1'b0,r_ins[2:0]};
 	endcase
     wire [5:0]addr_out_mux = (bus_index[1]?addr[11:6]:addr[5:0]);			// mux-d by portion
     assign    io_out   = {strobe_out, bus_index[1], strobe_out ? addr_out_mux : {bus_index[0], write, data_out}};
@@ -75,6 +74,10 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 	reg	 [11:0]r_data, c_data;
 	reg	 [11:0]r_data_addr, c_data_addr;
 	reg		   r_io_ready, c_io_ready;
+	reg		   r_io_skip, c_io_skip;
+	reg		   r_int_pending, c_int_pending;
+	reg		   r_int_enable, c_int_enable;
+	reg		clear_int_pending;
     //
     //	phase:
 	//	    st	name		next
@@ -172,9 +175,11 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 		c_data  = r_data;	
 		c_ins = r_ins;
 		c_io_ready = r_io_ready;
+		c_int_pending = r_int_pending&!clear_int_pending;
     	if (reset) begin	// reset clears the state machine and sets PC to 0
 			c_phase = 0;
 			c_io_ready = 0;
+			c_int_pending = 0;
     	end else 
     	case (r_phase) // synthesis full_case parallel_case
     	0:	begin					// 0: address latch address hi
@@ -187,6 +192,8 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 			end
     	7:	begin					// 1: address latch address lo
 				c_io_ready = ext_in[0];
+				c_io_skip = ext_in[1];
+				c_int_pending = c_int_pending|ext_in[2];
 				c_phase = 4;
 			end
     	4:	begin					// 1: read data in r_ins
@@ -209,20 +216,22 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 		endcase
 	end
 
-	reg cond;
 	always @(*) begin
 		c_pc    = r_pc;
 		c_super = r_super;
 		c_l = r_l;
 		c_a = r_a;
 		c_data_addr = r_data_addr;
-		
+		c_int_enable = r_int_enable;
+
+		wdata = 'bx;
 		addr = 'bx;
 		next_io = 0;
 		write = 0;
-		cond = 'bx;
+		clear_int_pending = 0;
 		addr = {r_ins[7]? r_pc[11:7]: 5'b0, r_ins[6:0]};
 		if (reset) begin
+			c_int_enable = 0;
 			c_super = 0;
 			c_pc = 0;
 			c_l = 0;
@@ -262,8 +271,40 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 							end
 						end
 					6:	begin
+							wdata = r_a;
+							if (r_ins[9:4] == 0) begin
+								addr = r_pc;
+								case (r_ins[2:0])
+								0: begin
+									if (r_int_enable) begin
+										addr = r_pc+1;
+										c_pc = r_pc+1;
+									end
+									c_int_enable = 0;
+								   end
+								1: c_int_enable = 1;
+								2: c_int_enable = 0;
+								3: begin
+									if (r_int_pending) begin
+										addr = r_pc+1;
+										c_pc = r_pc+1;
+									end
+							       end
+								7: begin
+										clear_int_pending = 1;
+								   end
+								default:;
+								endcase
+								c_super = 0;
+							end else begin
+								next_io = 1;
+								addr = {6'bx, r_ins[9:4]};
+								c_super = r_ins[4] ? 5:4;
+								write = !r_ins[4];
+							end
 						end
 					7:	begin
+							c_super = 0;
 							if (!r_ins[8]) begin
 								if (r_ins[7])
 									c_a = 0;
@@ -285,8 +326,9 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 								6:;
 								7:;
 								endcase
-							end else
-							if (!r_ins[0]) begin
+							end else 
+							if (!r_ins[0]) begin : rr
+								reg cond;
 								cond = r_ins[3]^((r_ins[6] && r_a==0) || (r_ins[5] && r_a[11]) || (r_ins[4] && r_l));
 								if (cond) begin
 									c_pc = r_pc+1;
@@ -294,6 +336,8 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 									if (r_ins[7])
 										c_a = 0;
 								end
+								if (r_ins[1])
+									c_super = 7;
 							end else begin
 								if (r_ins[7])
 									c_a = 0;
@@ -305,16 +349,9 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 								end
 							end
 							addr = c_pc;
-							c_super = 0;
 						end
 					default: ;
 					endcase
-				end
-				if (r_ins[11:10]==6) begin
-					next_io = 1;
-					addr = {3'b0, c_ins[8:0]};
-					c_super = r_ins[4]?5:4;
-				end else begin
 				end
 				if (r_phase == 6) begin
 					case (r_ins[11:9]) 
@@ -391,7 +428,7 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 					endcase
 				end
 			end
-		4:	begin
+		4:	begin 
 				next_io = r_ins[11:9] == 6;
 				write = 1;
 				addr = r_data_addr;
@@ -406,6 +443,10 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 					c_super = 0;
 				end
 			end
+		7:  begin // halt
+				;
+		    end
+	    default:;
     	endcase
     end
 
@@ -420,6 +461,9 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 		r_data  <= c_data;
 		r_data_addr <= c_data_addr;
 		r_io_ready <= c_io_ready;
+		r_io_skip <= c_io_skip;
+		r_int_pending <= c_int_pending;
+		r_int_enable <= c_int_enable;
     end
 
 endmodule
