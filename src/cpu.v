@@ -50,9 +50,6 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
     reg       write;		// write enable for ram/io
 	reg		  addr_pc;
 	wire [1:0]bus_index = r_phase[1:0];
-	wire [1:0]cycle = r_phase[2];
-	wire      addr_cycle = cycle==0;
-	wire      data_cycle = cycle==1;
 	reg [11:0]addr;
 	reg   [3:0]data_out;
 	always @(*)
@@ -248,27 +245,31 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 				if (r_phase == 0) begin
 					case (r_ins[11:9]) 
 					3:	begin		// DCA
+							c_data_addr = addr;
 							if (!r_ins[8]) begin
 								wdata = r_a;
-								c_a = 0;
 								write = 1;
+								c_a = 0;
 								c_super = 4;
 							end
 						end
 					4:	begin		// jms
 							if (!r_ins[8]) begin
-								c_pc = {r_pc[7]? r_pc[11:7]: 5'b0, r_ins[6:0]}+1;
-								addr = {r_pc[7]? c_pc[11:7]: 5'b0, r_ins[6:0]};
+								c_pc = {r_ins[7]? r_pc[11:7]: 5'b0, r_ins[6:0]}+1;
+								addr = {r_ins[7]? c_pc[11:7]: 5'b0, r_ins[6:0]};
 								wdata = r_pc;
+								write = 1;
 								c_super = 4;
 							end
+							c_data_addr = addr;
 						end
 					5:	begin		// jmp
 							if (!r_ins[8]) begin
-								c_pc = {r_pc[7]? r_pc[11:7]: 5'b0, r_ins[6:0]};
-								addr = {r_pc[7]? c_pc[11:7]: 5'b0, r_ins[6:0]};
+								c_pc = {r_ins[7]? r_pc[11:7]: 5'b0, r_ins[6:0]};
+								addr = {r_ins[7]? c_pc[11:7]: 5'b0, r_ins[6:0]};
 								c_super = 0;
 							end
+							c_data_addr = addr;
 						end
 					6:	begin
 							wdata = r_a;
@@ -355,20 +356,21 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 				end
 				if (r_phase == 6) begin
 					case (r_ins[11:9]) 
-					0, 1, 2, 3, 4, 5: c_super = r_ins[8] ? 2 : 3;
+					0, 1, 2, 3: c_super = r_ins[8] ? 2 : 3;
+					4, 5:	    c_super = 3;
 					default:;
 					endcase
 				end
 		    end
 		2:	begin	// indir read
 				addr = r_data;
-				c_data_addr = addr;
+				if (r_phase == 0) 
+					c_data_addr = r_data;
 				if (r_phase == 6) begin
 					c_super = 3;
 				end
 			end
 		3:	begin	// execute/ write back
-				addr = {r_pc[7]? r_pc[11:7]: 5'b0, c_ins[6:0]};
 				if (r_phase == 0) begin
 					case (r_ins[11:9]) 
 					0:	begin						// and
@@ -387,13 +389,14 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 							if (r_data==12'hfff)
 								c_pc=r_pc+1;
 							addr = r_data_addr;
-							c_super=4;
+							c_super = 4;
 						end 
 					3:  begin						// dca
 							wdata = r_a;
+							c_a = 0;
+							c_data_addr = r_data;
 							write = 1;
 							c_super = 4;
-							c_a = 0;
 						end	
 					4:  begin						// jms indir
 							write = 1;

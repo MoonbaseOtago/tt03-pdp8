@@ -26,6 +26,8 @@ void yyerror(char *err);
 struct tab {char *name; int token; };
 
 struct tab reserved[] = {
+	"page", t_page,
+	"PAGE", t_page,
 	"word", t_word,
 	"WORD", t_word,
 	"skon", t_skon,
@@ -130,6 +132,7 @@ declare_label(int ind)
 			errs++;
 			fprintf(stderr, "%d: label '%s' declared twice\n", line, sp->name);
 		}
+//printf("ind=%d offset=%d\n", ind, pc);
 		sp->offset = pc;
 		sp->found = 1;
 		return;
@@ -161,7 +164,7 @@ process_op(int ins)
 {
 	static int over=0;
 
-	if (pc >= sizeof(code)) {
+	if (pc >= (sizeof(code)/sizeof(code[0]))) {
 		if (!over) {
 			fprintf(stderr, "%d: ran out of code space\n", line-1);
 			errs++;
@@ -169,6 +172,7 @@ process_op(int ins)
 		}
 		return;
 	}
+//printf("@%x %o\n", pc, ins);
 	code[pc++] = ins;
 }
 
@@ -194,6 +198,15 @@ yylex(void)
 		c = fgetc(fin);
 	if (c == EOF) {
 		eof = 1;
+		line++;
+		return t_nl;
+	} else
+	if (c == '#') {
+		for (;;) {
+			c = fgetc(fin);
+			if (c == EOF || c == '\n')
+				break;
+		}
 		line++;
 		return t_nl;
 	} else
@@ -316,7 +329,7 @@ main(int argc, char **argv)
 		return 1;
 	}
 	if (yyparse()) {
-		fprintf(stderr, "%d: syntax error\n", line);
+		//fprintf(stderr, "%d: syntax error\n", line);
 		return 1;
 	}
 	for (rp = reloc_first; rp; rp = rp->next) {
@@ -333,11 +346,12 @@ main(int argc, char **argv)
 			if (rp->type) {
 				code[rp->offset] += sp->offset;
 			} else {
+//printf("reloc @%x '%s' ind=%d offset=%x\n", rp->offset, sp->name, sp->index, sp->offset);
 				if ((sp->offset&~0x7f) == 0) {
-					code[rp->offset] |= 0x80|sp->offset;
+					code[rp->offset] |= sp->offset;
 				} else
 				if ((sp->offset&~0x7f) == (rp->offset&~0x7f) ) {
-					code[rp->offset] |= sp->offset&0x7f;
+					code[rp->offset] |= 0x80|(sp->offset&0x7f);
 				} else {
 					errs++;
 					fprintf(stderr, "%d: '%s' not a local or 0 ref\n", rp->line, sp->name);

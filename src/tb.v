@@ -25,8 +25,6 @@ module tb (
         $dumpvars (0, tb);
 `endif
         #1;
-
-#1000000;$finish;
     end
 
     // wire up the inputs and outputs

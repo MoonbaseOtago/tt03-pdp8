@@ -17,13 +17,13 @@ e2:		'+' e2 			{ $$ = $2; }
 	|	t_value 		{ $$ = $1; }
 	;
 
-mem:		t_name 			{ $$ = ref_label($1, 0);} 
-	|	t_z exp		 	{ $$ = $1|0x80;  }
+mem:		t_name 			{ $$ = 0; ref_label($1, 0);} 
+	|	t_z exp		 	{ $$ = $1;  }
 	|	exp		 	{ $$ = $1; }
 	;
 
 memr:		mem			{ $$ = $1; }
-	|	t_i mem			{ $$ = $1|0x100; }
+	|	t_i mem			{ $$ = $2|0x100; }
 	;
 
 io:		t_tsf			{ $$ = (4<<3)|1; }
@@ -108,7 +108,7 @@ line:		label t_nl
 	|	ins t_nl		{ process_op($1);  }
 	|	'.' '=' exp t_nl	{ pc = $3; }
 	|	'.' '=' '.' '+' exp t_nl{ pc += $5; }
-	|	'.' t_page t_nl		{ pc += (pc+0x7f)&~0x7f; }
+	|	'.' t_page t_nl		{ pc = (pc+0x7f)&~0x7f; }
 	|	t_nl
 	;
 

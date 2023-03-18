@@ -3,7 +3,7 @@ from cocotb.clock import Clock
 from cocotb.triggers import RisingEdge, FallingEdge, Timer, ClockCycles
 
 
-outputs = [ 0x3 ]
+outputs = [ 3, 1, 0, 5 , 10, 15, 16, 17, 18, 19]
 
 @cocotb.test()
 async def test_cpu_pdp8(dut):
@@ -18,7 +18,7 @@ async def test_cpu_pdp8(dut):
 
     tmp = 1000
     dut._log.info("check all data outputs")
-    for i in range(1):
+    for i in range(10):
         dut._log.info("check output {}".format(i))
         while 1 :
             await ClockCycles(dut.clk, 1)
