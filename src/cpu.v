@@ -183,6 +183,7 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 				c_phase = 2;
 				if (write) 
 					c_data = wdata;
+				c_int_pending = c_int_pending|ext_in[0];
 			end
     	2:	begin					// 1: address latch address lo
 				c_phase = (next_io?7:4);
@@ -190,7 +191,6 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
     	7:	begin					// 1: address latch address lo
 				c_io_ready = ext_in[0];
 				c_io_skip = ext_in[1];
-				c_int_pending = c_int_pending|ext_in[2];
 				c_phase = 4;
 			end
     	4:	begin					// 1: read data in r_ins
@@ -206,8 +206,13 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 		6:	begin						// 4 address latch for next operand  
 				if (!write) 
 					c_data[3:0] = ext_in;
-				if (r_super == 0)
-					c_ins = {r_data[11:4], ext_in};
+				if (r_super == 0) begin
+					if (r_int_pending && r_int_enable) begin
+						c_ins = 12'o400;	// jms 0
+					end else begin
+						c_ins = {r_data[11:4], ext_in};
+					end
+				end
 				c_phase = 0;
 			end
 		endcase
@@ -230,7 +235,7 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 		if (reset) begin
 			c_int_enable = 0;
 			c_super = 0;
-			c_pc = 0;
+			c_pc = 12'o200;
 			c_l = 0;
 		end else
 		case (r_super) // synthesis full_case parallel_case
@@ -238,7 +243,11 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 				addr = r_pc;
 				if (r_phase == 6) begin
 					c_super = 1;
-					c_pc = r_pc+1;
+					if (r_int_pending && r_int_enable) begin
+						c_int_enable = 0;
+					end else begin
+						c_pc = r_pc+1;
+					end
 				end
 			end
 		1:  begin							// data fetch
@@ -424,11 +433,9 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 							if (r_io_ready && r_ins[4]) begin // read
 								c_a = r_data;
 							end else
-							if (r_ins[2]) 
-								c_a = 0;
-							if (r_io_ready && r_ins[0])
+							if ((r_io_skip&(r_ins[2:1]==0) || (r_io_ready&(r_ins[2:1]==2))) && r_ins[0])
 								c_pc = r_pc+1;
-							if (r_io_ready && !r_ins[0]) begin
+							if (r_io_ready && !r_ins[3] && r_ins[2:0] == 4) begin
 								next_io = 1;
 								c_super = 4;
 							end else begin

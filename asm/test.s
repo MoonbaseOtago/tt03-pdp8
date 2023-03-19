@@ -1,4 +1,4 @@
-	.=0
+	.=0x80
 	cla
 	tad	f0
 	tad	f1

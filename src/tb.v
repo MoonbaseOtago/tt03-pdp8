@@ -32,6 +32,7 @@ module tb (
     wire [11:0]sram_out;
     wire [11:0]io_out=0;
     wire interrupt = 0;
+    wire ready = 1;
     wire skip = 0;
 
     reg [3:0]din;
@@ -39,13 +40,15 @@ module tb (
     reg io;
     reg [4:0]io_sel;
     always @(*)
-    case ({io, outputs[6:5]})
-    3'b0_00: din = sram_out[11:8];
-    3'b0_01: din = sram_out[7:4];
-    3'b0_10: din = sram_out[3:0];
-    3'b1_00: din = io_out[11:8];
-    3'b1_01: din = io_out[7:4];
-    3'b1_10: din = io_out[3:0];
+    case ({outputs[7], io, outputs[6:5]})
+    4'b1_?_??: din = {3'bx, interrupt};
+    4'b0_0_00: din = sram_out[11:8];
+    4'b0_0_01: din = sram_out[7:4];
+    4'b0_0_10: din = sram_out[3:0];
+    4'b0_0_11: din = {2'b00,ready, skip};
+    4'b0_1_00: din = io_out[11:8];
+    4'b0_1_01: din = io_out[7:4];
+    4'b0_1_10: din = io_out[3:0];
     endcase
 
     always @(posedge clk) begin
