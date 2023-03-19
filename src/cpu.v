@@ -244,6 +244,9 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 		1:  begin							// data fetch
 				if (r_phase == 0) begin
 					case (r_ins[11:9]) 
+					2:	begin		// ISZ
+							c_data_addr = addr;
+						end
 					3:	begin		// DCA
 							c_data_addr = addr;
 							if (!r_ins[8]) begin
@@ -317,7 +320,7 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 									c_l = ~c_l;
 								if (r_ins[0])
 									c_a = c_a+1;
-								case (r_ins[4:2])
+								case (r_ins[3:1])
 								0:	;
 								1:  c_a = {c_a[5:0], c_a[11:6]};
 								2:  {c_l,c_a} = {c_a, c_l};
@@ -330,13 +333,17 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 							end else 
 							if (!r_ins[0]) begin : rr
 								reg cond;
-								cond = r_ins[3]^((r_ins[6] && r_a==0) || (r_ins[5] && r_a[11]) || (r_ins[4] && r_l));
+
+								if (r_ins[3]) begin
+									cond = (!r_ins[5] || r_a!=0) && (!r_ins[6] || !r_a[11]) && (!r_ins[4] || !r_l);
+								end else begin
+									cond = (r_ins[5] && r_a==0) || (r_ins[6] && r_a[11]) || (r_ins[4] && r_l);
+								end
 								if (cond) begin
 									c_pc = r_pc+1;
-								end else begin
-									if (r_ins[7])
-										c_a = 0;
 								end
+								if (r_ins[7])
+									c_a = 0;
 								if (r_ins[1])
 									c_super = 7;
 							end else begin
@@ -344,9 +351,10 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 									c_a = 0;
 								if (r_ins[6])
 									c_a = c_a|r_mq;
-								if (r_ins[5]) begin
+								if (r_ins[4]) begin
 									c_mq = r_ins[7]?0:r_a;
-									c_a = 0;
+									if (!r_ins[6])
+										c_a = 0;
 								end
 							end
 							addr = c_pc;
@@ -356,8 +364,8 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 				end
 				if (r_phase == 6) begin
 					case (r_ins[11:9]) 
-					0, 1, 2, 3: c_super = r_ins[8] ? 2 : 3;
-					4, 5:	    c_super = 3;
+					0, 1, 2: c_super = r_ins[8] ? 2 : 3;
+					3, 4, 5: c_super = 3;
 					default:;
 					endcase
 				end
@@ -395,6 +403,7 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 							wdata = r_a;
 							c_a = 0;
 							c_data_addr = r_data;
+							addr = r_data;
 							write = 1;
 							c_super = 4;
 						end	

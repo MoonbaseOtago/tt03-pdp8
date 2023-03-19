@@ -1,4 +1,4 @@
-%token t_i t_z t_name t_value t_cll t_cml t_rar t_ral t_rtr t_rtl t_bsw t_and t_tad t_isz t_dca t_jms t_jmp t_word t_hlt t_szl t_sna t_skp t_snl t_sza t_sma  t_spa t_nl t_page t_cla t_ion t_iof t_caf t_skon t_tcf t_tsf t_tpc t_iac t_cma t_iot
+%token t_i t_z t_name t_value t_cll t_cml t_rar t_ral t_rtr t_rtl t_bsw t_and t_tad t_isz t_dca t_jms t_jmp t_word t_hlt t_szl t_sna t_skp t_snl t_sza t_sma  t_spa t_nl t_page t_cla t_ion t_iof t_caf t_skon t_tcf t_tsf t_tpc t_iac t_cma t_iot t_nop t_acl t_swp t_cam t_mqa t_mql
 %start  program
 %%
 
@@ -54,6 +54,16 @@ opr:		t_cla group1		{ $$ = (1<<7)|$2; }
 	|	t_cla 			{ $$ = (1<<7); }
 	|	group1			{ $$ = $1; }
 	|	group2			{ $$ = $1|(2<<7); }
+	|	t_cla groupmq		{ $$ = $2|(3<<7)|1; }
+	|	groupmq			{ $$ = $1|(2<<7)|1; }
+	|	t_nop			{ $$ = 0; }
+	;
+
+groupmq:	t_mql			{ $$ = (1<<4); }
+	|	t_mqa			{ $$ = (1<<6); }
+	|	t_cam			{ $$ = (1<<7)|(1<<4); }
+	|	t_swp			{ $$ = (1<<6)|(1<<4); }
+	|	t_acl			{ $$ = (1<<6)|(1<<7); }
 	;
 
 g1:		t_cll			{ $$ = (1<<6); }
@@ -63,7 +73,7 @@ g1:		t_cll			{ $$ = (1<<6); }
 	|	t_ral			{ $$ = 2<<1; }
 	|	t_rtr			{ $$ = 5<<1; }
 	|	t_rtl			{ $$ = 3<<1; }
-	|	t_bsw			{ $$ = 6<<1; }
+	|	t_bsw			{ $$ = 1<<1; }
 	|	t_iac			{ $$ = 1<<0; }
 	;
 
@@ -71,15 +81,15 @@ group1:		g1 			{ $$ = $1;}
 	|	group1 g1		{ $$ = $1|$2;}
 	;
 
-g2a1:		t_sma			{ $$ = 8<<4; }
-	|	t_sza			{ $$ = 4<<4; }
-	|	t_snl			{ $$ = 2<<4; }
+g2a1:		t_sma			{ $$ = 8<<3; }
+	|	t_sza			{ $$ = 4<<3; }
+	|	t_snl			{ $$ = 2<<3; }
 	;
 
-g2a2:		t_skp			{ $$ = (1<<4); }
-	|	t_spa			{ $$ = (9<<4); }
-	|	t_sna			{ $$ = (5<<4); }
-	|	t_szl			{ $$ = (3<<4); }
+g2a2:		t_skp			{ $$ = (1<<3); }
+	|	t_spa			{ $$ = (9<<3); }
+	|	t_sna			{ $$ = (5<<3); }
+	|	t_szl			{ $$ = (3<<3); }
 	;
 
 g2a1l:		g2a1			{ $$ = $1; }

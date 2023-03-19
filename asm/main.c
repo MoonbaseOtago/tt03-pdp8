@@ -26,6 +26,18 @@ void yyerror(char *err);
 struct tab {char *name; int token; };
 
 struct tab reserved[] = {
+	"acl", t_acl,
+	"ACL", t_acl,
+	"mqa", t_mqa,
+	"MQA", t_mqa,
+	"mql", t_mql,
+	"MQL", t_mql,
+	"cam", t_cam,
+	"CAM", t_cam,
+	"swp", t_swp,
+	"SWP", t_swp,
+	"nop", t_nop,
+	"NOP", t_nop,
 	"page", t_page,
 	"PAGE", t_page,
 	"word", t_word,
@@ -42,7 +54,7 @@ struct tab reserved[] = {
 	"HLT", t_hlt,
 	"szl", t_szl,
 	"SZL", t_szl,
-	"ssn", t_sna,
+	"sna", t_sna,
 	"SNA", t_sna,
 	"spa", t_spa,
 	"SPA", t_spa,
