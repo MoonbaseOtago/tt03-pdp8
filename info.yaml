@@ -59,20 +59,20 @@ documentation:
     - reset
     - none
     - none
-    - data in 0
-    - data in 1
-    - data in 2
-    - data in 3
+    - data_in_0
+    - data_in_1
+    - data_in_2
+    - data_in_3
 # A description of what the outputs do
   outputs:
-    - address 0/data mux 0
-    - address 1/data mux 1
-    - address 2/data mux 2
-    - address 3/data mux 3
-    - address 4/r-w mux 
-    - address 5/phase lo select mux
-     - phase hi select
-    - address/data select
+    - address_0_data_mux_0
+    - address_1_data_mux_1
+    - address_2_data_mux_2
+    - address_3_data_mux_3
+    - address_4_rw_mux 
+    - address_5_phase_lo_select_mux
+    - phase_hi_select
+    - address_data_select
 
 # The following fields are optional
   tag:          "cpu, test"      # comma separated list of tags: test encryption, experiment, clock, animation, utility, industrial, pwm, fpga, alu, microprocessor, risc, riscv, sensor, signal generator, fft, filter, music, bcd, sound, serial, timer, random number generator, calculator, decoder, counter, puzzle, multiplier, game, oscillator,
