@@ -245,6 +245,16 @@ yylex(void)
 			v[ind] = 0;
 			ungetc(c, fin);
 			yylval = strtol(v, NULL, 16);
+		} else
+		if (c1 == '0') {
+			while (c >= '0' && c <= '7') {
+				if (ind < (sizeof(v)-1))
+					v[ind++] = c; 
+				c = fgetc(fin);
+			}
+			v[ind] = 0;
+			ungetc(c, fin);
+			yylval = strtol(v, NULL, 8);
 		} else {
 			while (isdigit(c)) {
 				if (ind < (sizeof(v)-1))

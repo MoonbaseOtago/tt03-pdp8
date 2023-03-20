@@ -4,6 +4,12 @@
 //	Released under an Apache License 2.0
 //
 
+//
+//	This is a basic PDP8 designed for Tiny Tapeout's tiny interface
+//	it doesn't include the extended math unit (multiply/divide).
+//	Also we don't have FP switches so it boots to address 0200
+//
+
 `default_nettype none
 
 module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0] io_out);
@@ -34,21 +40,16 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 	//	0:   clk
 	//	1:	 rst
 	//	2:	 interrupt
-	//  3:   skip
 	//	4-7: data in
 	//
 	//
 
     wire clk			= io_in[0];
     wire reset			= io_in[1];
-	wire interrupt		= io_in[2];
-	wire ext_skip		= io_in[3];
     wire [3:0]ext_in	= io_in[7:4];
     
     wire      strobe_out=~r_phase[2];// address strobe		- designed to be wired to a 7 bit latch and a MWS5101AEL3
-	reg		  nibble;	    // address/data nibble
     reg       write;		// write enable for ram/io
-	reg		  addr_pc;
 	wire [1:0]bus_index = r_phase[1:0];
 	reg [11:0]addr;
 	reg   [3:0]data_out;
@@ -225,6 +226,7 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 		c_a = r_a;
 		c_data_addr = r_data_addr;
 		c_int_enable = r_int_enable;
+		c_mq = r_mq;
 
 		wdata = 'bx;
 		addr = 'bx;

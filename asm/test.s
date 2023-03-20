@@ -1,4 +1,7 @@
-	.=0x80
+	.=0
+	.word 0
+	jmp	interrupt
+start:
 	cla
 	tad	f0
 	tad	f1
@@ -32,6 +35,9 @@ cont:	iac
 rc:	.word	rem_call
 rj:	.word	rem_jmp
 tt2:	.word 0xffe
+interrupt: hlt
+	.=0200
+	jmp	start
 	.page
 t1:	.word 0xffe
 t2:	.word tt2
