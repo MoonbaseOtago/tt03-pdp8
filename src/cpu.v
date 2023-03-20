@@ -173,6 +173,7 @@ module moonbase_pdp8 #(parameter MAX_COUNT=1000) (input [7:0] io_in, output [7:0
 		c_data  = r_data;	
 		c_ins = r_ins;
 		c_io_ready = r_io_ready;
+		c_io_skip = r_io_skip;
 		c_int_pending = r_int_pending&!clear_int_pending;
     	if (reset) begin	// reset clears the state machine and sets PC to 0
 			c_phase = 0;
